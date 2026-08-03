@@ -78,12 +78,15 @@ npm run build     # build de production + PWA (dist/)
 npm run preview   # tester le build (nécessaire pour le service worker)
 ```
 
-## Fichiers audio à produire
+## Fichiers audio
 
 Tous les effets sonores sont synthétisés par oscillateur Web Audio (aucun
-fichier nécessaire). Les **voix off** sont à enregistrer et à déposer dans
-`public/voice/` au format mp3 (voix chaleureuse, débit lent, phrases courtes).
-Tant qu'un fichier manque, un carillon doux à deux notes sert de placeholder.
+fichier nécessaire). Les **voix off** de `public/voice/` sont générées en
+synthèse vocale (Piper, voix française féminine « siwis », débit ralenti —
+diction douce d'enseignante). Pour les remplacer par de vrais enregistrements,
+il suffit d'écraser les mp3 en gardant les mêmes noms (voix chaleureuse,
+débit lent, phrases courtes). Si un fichier manque, un carillon doux à deux
+notes sert de placeholder.
 
 | Fichier | Texte à enregistrer |
 |---------|--------------------|

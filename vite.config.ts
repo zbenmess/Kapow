@@ -5,6 +5,9 @@ import { VitePWA } from 'vite-plugin-pwa'
 // PWA « Kapow » : 100 % hors ligne. Tous les assets sont précachés par le
 // service worker ; aucune requête réseau n'est nécessaire après installation.
 export default defineConfig({
+  // Base relative : l'app fonctionne aussi bien à la racine d'un domaine
+  // que servie sous un sous-chemin (GitHub Pages : /Kapow/).
+  base: './',
   plugins: [
     react(),
     VitePWA({
