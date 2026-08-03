@@ -14,7 +14,8 @@ import { HERO_IDS, type HeroId } from '../../characters/heroes'
 import { Hero } from '../../components/Hero'
 import { Shield } from '../../components/Shield'
 import { KapowBurst } from '../../components/KapowBurst'
-import { DROP_ZONE_MIN, MAGNET_RADIUS } from '../../design/tokens'
+import { clamp, useViewportSize } from '../../components/useViewportSize'
+import { DROP_ZONE_MIN, GAP_MIN, MAGNET_RADIUS } from '../../design/tokens'
 import { useSound } from '../../audio/useSound'
 import { useStore } from '../../store/useStore'
 
@@ -29,12 +30,13 @@ function shuffle<T>(arr: T[]): T[] {
 
 interface DraggableProps {
   hero: HeroId
+  size: number
   placed: boolean
   onPlaced: (hero: HeroId) => void
   getTargetCenter: (hero: HeroId) => { x: number; y: number } | null
 }
 
-function DraggableHero({ hero, placed, onPlaced, getTargetCenter }: DraggableProps) {
+function DraggableHero({ hero, size, placed, onPlaced, getTargetCenter }: DraggableProps) {
   const x = useMotionValue(0)
   const y = useMotionValue(0)
   // Le ressort crée la légère inertie : le héros « court après » le doigt.
@@ -111,7 +113,7 @@ function DraggableHero({ hero, placed, onPlaced, getTargetCenter }: DraggablePro
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
     >
-      <Hero hero={hero} size={140} />
+      <Hero hero={hero} size={size} />
     </motion.div>
   )
 }
@@ -174,14 +176,22 @@ export function ShieldsGame() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [placed])
 
+  // Tailles adaptées à la hauteur d'écran : les trois rangées doivent
+  // toujours tenir sans être coupées, même en paysage sur téléphone.
+  const { h } = useViewportSize()
+  const gap = h < 560 ? GAP_MIN : 32
+  const shieldSize = clamp(Math.floor((h - 40 - 2 * gap) / 3), 96, DROP_ZONE_MIN)
+  const heroSize = clamp(Math.floor(shieldSize * 0.82), 90, 140)
+
   return (
     <div className="zone-jeu relative flex h-full w-full items-center justify-between bg-creme px-[8vw]">
       {/* Héros à gauche */}
-      <div key={`heroes-${trioIndex}`} className="flex flex-col justify-center gap-8">
+      <div key={`heroes-${trioIndex}`} className="flex flex-col justify-center" style={{ gap }}>
         {trio.map((hero) => (
           <DraggableHero
             key={hero}
             hero={hero}
+            size={heroSize}
             placed={placed.has(hero)}
             onPlaced={onPlaced}
             getTargetCenter={getTargetCenter}
@@ -189,8 +199,8 @@ export function ShieldsGame() {
         ))}
       </div>
 
-      {/* Boucliers à droite — zones de dépôt ≥ 160 px */}
-      <div key={`shields-${trioIndex}`} className="flex flex-col justify-center gap-8">
+      {/* Boucliers à droite — zones de dépôt de 160 px (tablette) */}
+      <div key={`shields-${trioIndex}`} className="flex flex-col justify-center" style={{ gap }}>
         {shieldOrder.map((hero) => (
           <div
             key={hero}
@@ -200,7 +210,7 @@ export function ShieldsGame() {
             }}
             className={placed.has(hero) ? 'opacity-90' : ''}
           >
-            <Shield hero={hero} size={DROP_ZONE_MIN} />
+            <Shield hero={hero} size={shieldSize} />
           </div>
         ))}
       </div>

@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { EmblemBadge, HERO_IDS, type HeroId } from '../../characters/heroes'
 import { KapowBurst } from '../../components/KapowBurst'
+import { clamp, useViewportSize } from '../../components/useViewportSize'
 import { FLIP_MS, MISMATCH_MS } from '../../design/tokens'
 import { useSound } from '../../audio/useSound'
 import { useStore } from '../../store/useStore'
@@ -117,6 +118,13 @@ export function MemoryGame() {
 
   const cols = LEVELS[level].cols
 
+  // Largeur de carte calculée pour que toutes les rangées tiennent à l'écran
+  // (cartes au ratio 3/4), sans descendre sous la cible tactile de 90 px.
+  const { w: vw, h: vh } = useViewportSize()
+  const rows = Math.ceil(deck.length / cols)
+  const fitHeight = Math.floor(((vh - 40 - (rows - 1) * 24) * 3) / (4 * rows))
+  const cardW = clamp(Math.min(Math.floor(vw * 0.18), fitHeight, 150), 90, 150)
+
   return (
     <div className="zone-jeu relative flex h-full w-full items-center justify-center bg-creme">
       <div
@@ -130,7 +138,7 @@ export function MemoryGame() {
             <div
               key={card.key}
               className="tappable cursor-pointer"
-              style={{ width: 'min(150px, 18vw, 21vh)', minWidth: 90, perspective: 800 }}
+              style={{ width: cardW, perspective: 800 }}
               onPointerDown={(e) => {
                 e.stopPropagation()
                 tapCard(card)

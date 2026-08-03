@@ -12,6 +12,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { HERO_IDS, type HeroId } from '../../characters/heroes'
 import { Hero } from '../../components/Hero'
 import { KapowBurst } from '../../components/KapowBurst'
+import { clamp, useViewportSize } from '../../components/useViewportSize'
 import { OBSERVE_MS } from '../../design/tokens'
 import { useSound } from '../../audio/useSound'
 import { useStore } from '../../store/useStore'
@@ -53,8 +54,10 @@ export function FlyAwayGame() {
   const reduced = useReducedMotion()
 
   // Déroulé d'un tour : observation 3 s → envol → choix.
+  // L'effet ne dépend QUE du tour : s'il dépendait aussi de la phase, son
+  // nettoyage annulerait le second timer au passage observe → fly, et les
+  // vignettes de réponse n'apparaîtraient jamais.
   useEffect(() => {
-    if (phase !== 'observe') return
     voice('regarde-bien')
     const t1 = window.setTimeout(() => {
       setPhase('fly')
@@ -66,7 +69,7 @@ export function FlyAwayGame() {
       window.clearTimeout(t2)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, round])
+  }, [round])
 
   const choose = (hero: HeroId) => {
     if (phase !== 'choice' || locked.current) return
@@ -100,6 +103,11 @@ export function FlyAwayGame() {
 
   const heroHidden = phase === 'fly' || phase === 'choice'
 
+  // Tailles adaptées à la hauteur d'écran (téléphone paysage compris).
+  const { h } = useViewportSize()
+  const heroSize = clamp(Math.floor(h * 0.28), 100, 170)
+  const thumbBox = clamp(Math.floor(h * 0.3), 110, 160)
+
   return (
     <div className="zone-jeu relative flex h-full w-full flex-col items-center justify-center bg-creme">
       {/* Les trois héros */}
@@ -122,14 +130,14 @@ export function FlyAwayGame() {
               }
               transition={{ duration: 0.85, ease: heroHidden ? 'easeIn' : 'easeOut' }}
             >
-              <Hero hero={hero} size={170} />
+              <Hero hero={hero} size={heroSize} />
             </motion.div>
           )
         })}
       </div>
 
       {/* Les deux vignettes de réponse, très espacées */}
-      <div className="mt-4 h-[180px] w-full">
+      <div className="mt-4 w-full" style={{ height: thumbBox + 12 }}>
         {phase === 'choice' && (
           <motion.div
             className="flex h-full w-full items-center justify-between px-[12vw]"
@@ -144,13 +152,14 @@ export function FlyAwayGame() {
                 transition={{ duration: 0.5 }}
               >
                 <div
-                  className="tappable flex h-[160px] w-[160px] cursor-pointer items-center justify-center rounded-blob bg-coquille shadow-pose active:scale-95"
+                  className="tappable flex cursor-pointer items-center justify-center rounded-blob bg-coquille shadow-pose active:scale-95"
+                  style={{ width: thumbBox, height: thumbBox }}
                   onPointerDown={(e) => {
                     e.stopPropagation()
                     choose(hero)
                   }}
                 >
-                  <Hero hero={hero} size={110} />
+                  <Hero hero={hero} size={Math.floor(thumbBox * 0.66)} />
                 </div>
               </motion.div>
             ))}
