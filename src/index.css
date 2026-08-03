@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Police d'affichage — interface parent uniquement (variable 400→800) */
+@font-face {
+  font-family: 'Baloo 2';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('/fonts/baloo2-latin.woff2') format('woff2');
+}
+
+/* L'app vit en plein écran, sans sélection, sans zoom, sans pull-to-refresh. */
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+html {
+  overscroll-behavior: none;
+}
+
+body {
+  margin: 0;
+  background-color: #fff6e9;
+  color: #35365c;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation; /* supprime le délai et le double-tap zoom partout */
+  font-family: 'Baloo 2', 'Comic Sans MS', ui-rounded, system-ui, sans-serif;
+}
+
+/* Les zones de jeu neutralisent tout geste natif (scroll, zoom, refresh). */
+.zone-jeu {
+  touch-action: none;
+}
+
+img,
+svg {
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+/* Les éléments interactifs réactivent les pointer events coupés ci-dessus. */
+.tappable,
+.tappable svg {
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.15s !important;
+  }
+}
