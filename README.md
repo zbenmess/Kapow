@@ -6,7 +6,7 @@ mécanisme d'échec, aucune sortie possible du jeu.
 
 ## L'univers : la Ligue Kapow
 
-Six héros originaux, dessinés en SVG inline (vectoriel plat, formes rondes,
+Huit héros originaux, dessinés en SVG inline (vectoriel plat, formes rondes,
 visages stylisés en deux points et un sourire — jamais réalistes) :
 
 | Héros | Teinte | Emblème | Pouvoir |
@@ -17,6 +17,8 @@ visages stylisés en deux points et un sourire — jamais réalistes) :
 | **Givro** | bleu glacier `#45A8DC` | flocon | la glace |
 | **Volta** | jaune miel `#F5B531` | éclair | la foudre |
 | **Mira** | violet myrtille `#8A6BC9` | croissant de lune | l'invisibilité |
+| **Braise** | rouge cerise `#C9404F` | flamme | le feu |
+| **Onda** | vert lagon `#2FB4A8` | double vague | l'eau |
 
 Chaque héros se reconnaît à trois signaux redondants — sa couleur, son emblème,
 son petit motif sonore — pour qu'un enfant qui ne lit pas ne les confonde jamais.
@@ -40,18 +42,32 @@ lobes tout en courbes qui éclate derrière chaque réussite. C'est l'onomatopé
 des comics (KAPOW !) traduite en pur pictogramme : toute l'énergie de la BD,
 sans une seule lettre.
 
-## Les 4 jeux
+## Les 6 jeux (difficulté adaptative)
 
-1. **Memory des emblèmes** — 3 paires (2×3) → 4 paires (2×4) → 6 paires (3×4).
-   Flip 3D 400 ms ; paire trouvée = grossissement + son du héros ; deux cartes
-   différentes = retournement silencieux après 1,2 s.
-2. **Qui s'est envolé ?** — « Regarde bien », 3 s d'observation, un héros
-   s'envole, deux vignettes très espacées ; le bon choix le fait revenir en volant.
+Chaque jeu possède des niveaux ; deux manches réussies sans accroc font
+monter d'un cran, deux manches laborieuses font redescendre en douceur.
+Rien n'est montré à l'enfant. Le parent choisit le niveau de départ
+(Doux / Moyen / Costaud) et les tuiles d'accueil gagnent de petites
+étoiles Kapow au fil des progrès — sans score ni chiffre.
+
+1. **Memory des emblèmes** — paires identiques 3 → 4 → 6 → 8 (4×4), puis mode
+   **association** : apparier la carte emblème et la carte personnage du même
+   héros (3 → 6 paires). Flip 3D 400 ms ; paire = grossissement + son du
+   héros ; deux cartes différentes = retournement silencieux après 1,2 s.
+2. **Qui s'est envolé ?** — 3, 4 puis 5 héros alignés, 2 ou 3 vignettes ; au
+   niveau expert, DEUX héros s'envolent. « Regarde bien », 3 s d'observation.
    Mauvaise vignette : rebond doux, rien d'autre, réessai illimité.
-3. **Chaque héros son bouclier** — drag & drop avec inertie (ressort), aimantation
-   à 80 px, zones de 160 px ; relâché ailleurs, le héros revient à sa place.
-4. **La toile** — tracé au doigt (droite → courbe → zigzag), tolérance 45 px ;
-   sortie du chemin = le trait s'arrête, on reprend au dernier point valide.
+3. **Chaque héros son bouclier** — 3 puis 4 paires ; aux niveaux avancés les
+   boucliers deviennent NEUTRES (même teinte étain) : seul l'emblème guide.
+   Drag avec inertie (ressort), aimantation à 80 px, zones de 160 px.
+4. **La toile** — droite → courbe → zigzag → boucle → spirale, puis tracer les
+   emblèmes des héros (éclair de Volta, croissant de Mira). Tolérance qui se
+   resserre : 45 → 40 → 35 px ; on reprend toujours du dernier point valide.
+5. **L'intrus** — quatre vignettes, trois identiques, taper la différente :
+   héros entiers, puis emblèmes colorés, puis emblèmes d'une seule couleur.
+6. **L'écho Kapow** — des pastilles-héros jouent une séquence de 2-3 motifs
+   sonores, l'enfant la rejoue. Une erreur ne déclenche rien : la séquence se
+   rejoue patiemment.
 
 ## Garanties (les trois interdits)
 
@@ -103,6 +119,15 @@ notes sert de placeholder.
 | `voice/nom-givro.mp3` | « Givro ! » |
 | `voice/nom-volta.mp3` | « Volta ! » |
 | `voice/nom-mira.mp3` | « Mira ! » |
+| `voice/nom-braise.mp3` | « Braise ! » |
+| `voice/nom-onda.mp3` | « Onda ! » |
+| `voice/bravo-2.mp3` | « Super ! » |
+| `voice/bravo-3.mp3` | « Quel champion ! » |
+| `voice/bravo-4.mp3` | « Magnifique ! » |
+| `voice/bravo-5.mp3` | « Ouiii, c'est gagné ! » |
+| `voice/intrus-intro.mp3` | « Trouve celui qui est différent ! » |
+| `voice/echo-intro.mp3` | « Écoute bien la musique… » |
+| `voice/a-toi.mp3` | « À toi ! » |
 
 Après ajout des mp3, relancer `npm run build` : le service worker les précache
 et ils fonctionnent hors ligne.
@@ -111,11 +136,11 @@ et ils fonctionnent hors ligne.
 
 ```
 src/
-  games/          un dossier par jeu, autonome (memory, envol, boucliers, toile)
-  components/     Hero, Shield, TileButton, BackButton, KapowBurst
-  characters/     définitions et SVG des 6 héros
+  games/          un dossier par jeu (memory, envol, boucliers, toile, intrus, echo)
+  components/     Hero, Shield, TileButton, BackButton, KapowBurst, useViewportSize
+  characters/     définitions et SVG des 8 héros
   audio/          AudioManager (Web Audio) + hook useSound
-  store/          état Zustand (progression, réglages, volume) → localStorage
+  store/          état Zustand (niveaux adaptatifs, réglages, volume) → localStorage
   parent/         ParentGate (appui long + addition) et ParentPanel
   design/         tokens documentés
   App.tsx

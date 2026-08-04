@@ -25,19 +25,31 @@ export const VOICE_IDS = [
   'accueil',
   'regarde-bien',
   'bravo',
+  'bravo-2',
+  'bravo-3',
+  'bravo-4',
+  'bravo-5',
   'memory-intro',
   'envol-intro',
   'boucliers-intro',
   'toile-intro',
+  'intrus-intro',
+  'echo-intro',
+  'a-toi',
   'nom-roc',
   'nom-zoum',
   'nom-alto',
   'nom-givro',
   'nom-volta',
   'nom-mira',
+  'nom-braise',
+  'nom-onda',
 ] as const
 
 export type VoiceId = (typeof VOICE_IDS)[number]
+
+/** Encouragements interchangeables — tirés au hasard pour ne pas lasser. */
+const CHEERS: VoiceId[] = ['bravo', 'bravo-2', 'bravo-3', 'bravo-4', 'bravo-5']
 
 class AudioManager {
   private ctx: AudioContext | null = null
@@ -180,7 +192,23 @@ class AudioManager {
       case 'hero-mira':
         this.note(660, 0, 0.55, { type: 'sine', gain: 0.3, glideTo: 330 })
         break
+      case 'hero-braise':
+        // Crépitement chaud : trois petites notes qui pétillent vers l'aigu.
+        this.note(220, 0, 0.1, { type: 'square', gain: 0.22 })
+        this.note(330, 0.09, 0.1, { type: 'square', gain: 0.22 })
+        this.note(494, 0.18, 0.22, { type: 'square', gain: 0.24, glideTo: 660 })
+        break
+      case 'hero-onda':
+        // Vaguelette : glissando doux qui monte puis redescend.
+        this.note(392, 0, 0.3, { type: 'sine', gain: 0.3, glideTo: 587 })
+        this.note(587, 0.28, 0.35, { type: 'sine', gain: 0.26, glideTo: 440 })
+        break
     }
+  }
+
+  /** Encouragement aléatoire (« Bravo ! », « Super ! », …). */
+  cheer() {
+    this.voice(CHEERS[Math.floor(Math.random() * CHEERS.length)])
   }
 
   /** Voix off. Une seule voix à la fois : la nouvelle coupe la précédente. */

@@ -11,9 +11,11 @@
  *   Givro  · bleu glacier   · flocon     · la glace
  *   Volta  · jaune miel     · éclair     · la foudre
  *   Mira   · violet myrtille· croissant  · l'invisibilité
+ *   Braise · rouge cerise   · flamme     · le feu
+ *   Onda   · vert lagon     · vague      · l'eau
  */
 
-export type HeroId = 'roc' | 'zoum' | 'alto' | 'givro' | 'volta' | 'mira'
+export type HeroId = 'roc' | 'zoum' | 'alto' | 'givro' | 'volta' | 'mira' | 'braise' | 'onda'
 
 export interface HeroDef {
   id: HeroId
@@ -31,9 +33,11 @@ export const HEROES: Record<HeroId, HeroDef> = {
   givro: { id: 'givro', name: 'Givro', power: 'la glace', color: '#45A8DC', colorDark: '#2C7FAD' },
   volta: { id: 'volta', name: 'Volta', power: 'la foudre', color: '#F5B531', colorDark: '#C98D1B' },
   mira: { id: 'mira', name: 'Mira', power: "l'invisibilité", color: '#8A6BC9', colorDark: '#64489E' },
+  braise: { id: 'braise', name: 'Braise', power: 'le feu', color: '#C9404F', colorDark: '#962B3A' },
+  onda: { id: 'onda', name: 'Onda', power: "l'eau", color: '#2FB4A8', colorDark: '#1E837B' },
 }
 
-export const HERO_IDS: HeroId[] = ['roc', 'zoum', 'alto', 'givro', 'volta', 'mira']
+export const HERO_IDS: HeroId[] = ['roc', 'zoum', 'alto', 'givro', 'volta', 'mira', 'braise', 'onda']
 
 /* ------------------------------------------------------------------ */
 /* Emblèmes — glyphes pleins, viewBox 0 0 100 100, dessinés en `fill`. */
@@ -111,6 +115,26 @@ function EmblemMira({ fill }: { fill: string }) {
   )
 }
 
+function EmblemBraise({ fill }: { fill: string }) {
+  // Flamme : une mèche qui danse sur le côté.
+  return (
+    <path
+      d="M50 6 C46 26 68 32 70 56 A26 26 0 1 1 24 62 C24 46 34 40 36 26 C42 36 48 30 50 6 Z"
+      fill={fill}
+    />
+  )
+}
+
+function EmblemOnda({ fill }: { fill: string }) {
+  // Double vague : l'eau qui roule.
+  return (
+    <g stroke={fill} strokeWidth="11" fill="none" strokeLinecap="round">
+      <path d="M14 38 Q30 24 50 38 T86 38" />
+      <path d="M14 62 Q30 48 50 62 T86 62" />
+    </g>
+  )
+}
+
 const EMBLEMS: Record<HeroId, (p: { fill: string }) => JSX.Element> = {
   roc: EmblemRoc,
   zoum: EmblemZoum,
@@ -118,6 +142,8 @@ const EMBLEMS: Record<HeroId, (p: { fill: string }) => JSX.Element> = {
   givro: EmblemGivro,
   volta: EmblemVolta,
   mira: EmblemMira,
+  braise: EmblemBraise,
+  onda: EmblemOnda,
 }
 
 /** Glyphe d'emblème seul (à poser sur un fond de couleur). */
@@ -207,6 +233,24 @@ function HeroExtras({ def }: { def: HeroDef }) {
           strokeDasharray="1 22"
           opacity="0.8"
         />
+      )
+    case 'braise':
+      // Trois flammèches sur la tête.
+      return (
+        <g fill={def.colorDark}>
+          <path d="M78 28 C74 16 82 10 84 2 C90 10 90 20 86 30 Z" />
+          <path d="M96 24 C92 10 100 4 102 -6 C110 4 110 16 104 28 Z" transform="translate(0 8)" />
+          <path d="M116 28 C112 16 120 10 122 2 C128 10 128 20 124 30 Z" />
+        </g>
+      )
+    case 'onda':
+      // Trois bulles qui remontent le long de l'épaule.
+      return (
+        <g fill={def.colorDark} opacity="0.75">
+          <circle cx="34" cy="150" r="10" />
+          <circle cx="24" cy="120" r="7" />
+          <circle cx="34" cy="94" r="5" />
+        </g>
       )
   }
 }

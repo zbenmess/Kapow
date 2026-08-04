@@ -5,5 +5,6 @@ import { audio, type CueId, type VoiceId } from './AudioManager'
 export function useSound() {
   const play = useCallback((cue: CueId) => audio.play(cue), [])
   const voice = useCallback((id: VoiceId) => audio.voice(id), [])
-  return { play, voice }
+  const cheer = useCallback(() => audio.cheer(), [])
+  return { play, voice, cheer }
 }

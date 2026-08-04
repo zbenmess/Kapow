@@ -11,6 +11,8 @@
  *   givro  #45A8DC  bleu glacier      — Givro, la glace
  *   volta  #F5B531  jaune miel        — Volta, la foudre
  *   mira   #8A6BC9  violet myrtille   — Mira, l'invisibilité
+ *   braise #C9404F  rouge cerise      — Braise, le feu
+ *   onda   #2FB4A8  vert lagon        — Onda, l'eau
  *
  *   creme  #FFF6E9  fond unique · encre #35365C traits et ombres
  *
@@ -57,6 +59,8 @@ export const COLORS = {
   givro: '#45A8DC',
   volta: '#F5B531',
   mira: '#8A6BC9',
+  braise: '#C9404F',
+  onda: '#2FB4A8',
   creme: '#FFF6E9',
   encre: '#35365C',
   coquille: '#FFFDF7',

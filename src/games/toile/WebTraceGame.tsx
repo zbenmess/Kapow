@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { KapowBurst } from '../../components/KapowBurst'
-import { COLORS, TRACE_TOLERANCE } from '../../design/tokens'
+import { COLORS } from '../../design/tokens'
 import { useSound } from '../../audio/useSound'
 import { useStore } from '../../store/useStore'
 
@@ -19,11 +19,43 @@ import { useStore } from '../../store/useStore'
 const VIEW_W = 1000
 const VIEW_H = 560
 
-const LEVELS: { d: string; color: string }[] = [
-  { d: 'M 140 280 L 860 280', color: COLORS.zoum }, // ligne droite
-  { d: 'M 140 400 Q 500 60 860 400', color: COLORS.givro }, // courbe simple
-  { d: 'M 120 420 L 350 140 L 570 420 L 790 140', color: COLORS.volta }, // zigzag
+/** Spirale d'Archimède générée en polyligne (du dehors vers le dedans). */
+function spiralPath(): string {
+  const cx = 500
+  const cy = 285
+  const turns = 3.4 * Math.PI
+  const pts: string[] = []
+  for (let i = 0; i <= 90; i++) {
+    const t = (i / 90) * turns
+    const r = 205 - (t / turns) * 160
+    const x = cx + r * Math.cos(t + Math.PI)
+    const y = cy + r * 0.72 * Math.sin(t + Math.PI)
+    pts.push(`${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`)
+  }
+  return pts.join(' ')
+}
+
+/**
+ * 7 niveaux : droite → courbe → zigzag → boucle → spirale, puis tracer les
+ * EMBLÈMES des héros (l'éclair de Volta, le croissant de Mira). La tolérance
+ * se resserre avec les niveaux : 45 → 40 → 35 px.
+ */
+const LEVELS: { d: string; color: string; tol: number }[] = [
+  { d: 'M 140 280 L 860 280', color: COLORS.zoum, tol: 45 }, // ligne droite
+  { d: 'M 140 400 Q 500 60 860 400', color: COLORS.givro, tol: 45 }, // courbe simple
+  { d: 'M 120 420 L 350 140 L 570 420 L 790 140', color: COLORS.volta, tol: 45 }, // zigzag
+  {
+    // boucle cursive
+    d: 'M 140 380 C 320 380 480 360 580 300 C 700 230 640 90 500 120 C 380 145 380 300 520 350 C 640 393 760 370 860 320',
+    color: COLORS.roc,
+    tol: 40,
+  },
+  { d: spiralPath(), color: COLORS.onda, tol: 40 }, // spirale
+  { d: 'M 560 60 L 350 320 L 480 320 L 430 500', color: COLORS.volta, tol: 35 }, // éclair de Volta
+  { d: 'M 640 90 A 210 210 0 1 0 640 470', color: COLORS.mira, tol: 35 }, // croissant de Mira
 ]
+
+const PATHS_PER_SESSION = 3
 
 const SAMPLES = 220
 
@@ -41,17 +73,20 @@ function samplePath(d: string): { x: number; y: number }[] {
 }
 
 export function WebTraceGame() {
-  const [level, setLevel] = useState(0)
+  const storeLevel = useStore((s) => s.levels.toile)
+  const { setScreen, reportRound } = useStore()
+  const [level, setLevel] = useState(storeLevel)
+  const [pathCount, setPathCount] = useState(0)
   const [progress, setProgress] = useState(0) // index du dernier échantillon validé
   const [done, setDone] = useState(false)
   const svgRef = useRef<SVGSVGElement>(null)
   const tracing = useRef(false)
   const progressRef = useRef(0)
-  const { play, voice } = useSound()
-  const { setScreen, bumpProgress } = useStore()
+  const resumes = useRef(0)
+  const { play, voice, cheer } = useSound()
   const reduced = useReducedMotion()
 
-  const { d, color } = LEVELS[level]
+  const { d, color, tol } = LEVELS[level]
   const points = useMemo(() => samplePath(d), [d])
 
   useEffect(() => {
@@ -73,7 +108,7 @@ export function WebTraceGame() {
     return {
       x: (e.clientX - rect.left - offX) / scale,
       y: (e.clientY - rect.top - offY) / scale,
-      tolerance: TRACE_TOLERANCE / scale,
+      tolerance: tol / scale,
     }
   }
 
@@ -110,13 +145,15 @@ export function WebTraceGame() {
       play('sparkle')
       window.setTimeout(() => {
         play('fanfare')
-        voice('bravo')
+        cheer()
       }, 500)
-      bumpProgress('toile')
+      reportRound('toile', resumes.current >= 4)
       window.setTimeout(() => {
-        if (level + 1 < LEVELS.length) {
-          setLevel(level + 1)
+        if (pathCount + 1 < PATHS_PER_SESSION) {
+          setPathCount(pathCount + 1)
+          setLevel(useStore.getState().levels.toile)
           progressRef.current = 0
+          resumes.current = 0
           setProgress(0)
           setDone(false)
         } else {
@@ -132,6 +169,9 @@ export function WebTraceGame() {
     const anchor = points[progressRef.current]
     // On (re)démarre en posant le doigt près du dernier point valide.
     if (Math.hypot(anchor.x - x, anchor.y - y) <= tolerance * 1.6) {
+      // Une reprise en cours de chemin compte pour la difficulté adaptative
+      // (aucune pénalité visible : on repart simplement du point valide).
+      if (progressRef.current > 5) resumes.current += 1
       tracing.current = true
       svgRef.current!.setPointerCapture(e.pointerId)
       play('tap')

@@ -1,30 +1,41 @@
 /**
- * Memory des emblèmes.
+ * Memory des emblèmes — 7 niveaux adaptatifs.
  *
- * Niveaux : 3 paires (2×3) → 4 paires (2×4) → 6 paires (3×4).
+ * Niveaux 0-3 : paires identiques (3, 4, 6 puis 8 paires en 4×4).
+ * Niveaux 4-6 : ASSOCIATION — apparier la carte emblème avec la carte
+ * personnage du même héros (3, 4 puis 6 paires). Un vrai saut cognitif :
+ * on passe de « identique » à « va ensemble ».
+ *
  * Flip 3D 400 ms. Paire trouvée : les cartes grossissent, le son du héros
- * joue, elles restent visibles. Deux cartes différentes : retournement
- * automatique après 1,2 s, SANS son — l'erreur ne déclenche rien.
- * Progression automatique au niveau suivant, puis retour à l'accueil.
+ * joue (et son prénom en mode association), elles restent visibles. Deux
+ * cartes différentes : retournement automatique après 1,2 s, SANS son.
+ * Une session = 3 grilles, la difficulté s'ajustant entre chacune.
  */
 import { useEffect, useRef, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { EmblemBadge, HERO_IDS, type HeroId } from '../../characters/heroes'
+import { EmblemBadge, HeroFigure, HERO_IDS, type HeroId } from '../../characters/heroes'
 import { KapowBurst } from '../../components/KapowBurst'
 import { clamp, useViewportSize } from '../../components/useViewportSize'
 import { FLIP_MS, MISMATCH_MS } from '../../design/tokens'
 import { useSound } from '../../audio/useSound'
 import { useStore } from '../../store/useStore'
 
-const LEVELS = [
-  { pairs: 3, cols: 3 },
-  { pairs: 4, cols: 4 },
-  { pairs: 6, cols: 4 },
+const LEVELS: { pairs: number; cols: number; mode: 'identique' | 'association' }[] = [
+  { pairs: 3, cols: 3, mode: 'identique' },
+  { pairs: 4, cols: 4, mode: 'identique' },
+  { pairs: 6, cols: 4, mode: 'identique' },
+  { pairs: 8, cols: 4, mode: 'identique' },
+  { pairs: 3, cols: 3, mode: 'association' },
+  { pairs: 4, cols: 4, mode: 'association' },
+  { pairs: 6, cols: 4, mode: 'association' },
 ]
+
+const GRIDS_PER_SESSION = 3
 
 interface Card {
   key: number
   hero: HeroId
+  face: 'embleme' | 'heros'
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -36,20 +47,34 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-function buildDeck(pairs: number): Card[] {
+function buildDeck(level: number): Card[] {
+  const { pairs, mode } = LEVELS[level]
   const heroes = shuffle(HERO_IDS).slice(0, pairs)
-  return shuffle(heroes.flatMap((h) => [h, h])).map((hero, key) => ({ key, hero }))
+  const raw =
+    mode === 'identique'
+      ? heroes.flatMap((h) => [
+          { hero: h, face: 'embleme' as const },
+          { hero: h, face: 'embleme' as const },
+        ])
+      : heroes.flatMap((h) => [
+          { hero: h, face: 'embleme' as const },
+          { hero: h, face: 'heros' as const },
+        ])
+  return shuffle(raw).map((c, key) => ({ ...c, key }))
 }
 
 export function MemoryGame() {
-  const [level, setLevel] = useState(0)
-  const [deck, setDeck] = useState<Card[]>(() => buildDeck(LEVELS[0].pairs))
+  const storeLevel = useStore((s) => s.levels.memory)
+  const { setScreen, reportRound } = useStore()
+  const [level, setLevel] = useState(storeLevel)
+  const [gridCount, setGridCount] = useState(0)
+  const [deck, setDeck] = useState<Card[]>(() => buildDeck(storeLevel))
   const [flipped, setFlipped] = useState<number[]>([])
   const [matched, setMatched] = useState<Set<number>>(new Set())
   const [celebrating, setCelebrating] = useState(false)
+  const mismatches = useRef(0)
   const locked = useRef(false)
-  const { play, voice } = useSound()
-  const { setScreen, bumpProgress } = useStore()
+  const { play, voice, cheer } = useSound()
   const reduced = useReducedMotion()
 
   useEffect(() => {
@@ -57,12 +82,13 @@ export function MemoryGame() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const startLevel = (lv: number) => {
+  const startGrid = (lv: number) => {
     setLevel(lv)
-    setDeck(buildDeck(LEVELS[lv].pairs))
+    setDeck(buildDeck(lv))
     setFlipped([])
     setMatched(new Set())
     setCelebrating(false)
+    mismatches.current = 0
     locked.current = false
   }
 
@@ -77,20 +103,16 @@ export function MemoryGame() {
     locked.current = true
     const [a, b] = next.map((k) => deck[k])
     if (a.hero === b.hero) {
-      // Paire : grossissement + son du héros, cartes définitivement visibles.
       window.setTimeout(() => {
         play(`hero-${a.hero}`)
-        setMatched((m) => {
-          const nm = new Set(m)
-          nm.add(a.key)
-          nm.add(b.key)
-          return nm
-        })
+        if (LEVELS[level].mode === 'association') voice(`nom-${a.hero}`)
+        setMatched((m) => new Set([...m, a.key, b.key]))
         setFlipped([])
         locked.current = false
       }, FLIP_MS)
     } else {
       // Pas de son, pas de pénalité : simple retournement après 1,2 s.
+      mismatches.current += 1
       window.setTimeout(() => {
         setFlipped([])
         locked.current = false
@@ -98,19 +120,24 @@ export function MemoryGame() {
     }
   }
 
-  // Grille complétée → célébration puis niveau suivant (ou accueil).
+  // Grille complétée → la difficulté s'ajuste, puis grille suivante / accueil.
   useEffect(() => {
     if (deck.length > 0 && matched.size === deck.length && !celebrating) {
       setCelebrating(true)
       locked.current = true
-      bumpProgress('memory')
+      const struggled = mismatches.current > LEVELS[level].pairs * 1.5
+      reportRound('memory', struggled)
       window.setTimeout(() => {
         play('fanfare')
-        voice('bravo')
+        cheer()
       }, 400)
       window.setTimeout(() => {
-        if (level + 1 < LEVELS.length) startLevel(level + 1)
-        else setScreen('home')
+        if (gridCount + 1 < GRIDS_PER_SESSION) {
+          setGridCount(gridCount + 1)
+          startGrid(useStore.getState().levels.memory)
+        } else {
+          setScreen('home')
+        }
       }, 2600)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -170,9 +197,9 @@ export function MemoryGame() {
                     />
                   </svg>
                 </div>
-                {/* Face : emblème du héros */}
+                {/* Face : emblème ou personnage selon la carte */}
                 <div
-                  className="absolute inset-0 flex items-center justify-center rounded-3xl bg-coquille p-4 shadow-pose"
+                  className="absolute inset-0 flex items-center justify-center rounded-3xl bg-coquille p-3 shadow-pose"
                   style={{
                     backfaceVisibility: 'hidden',
                     transform: reduced ? undefined : 'rotateY(180deg)',
@@ -180,7 +207,11 @@ export function MemoryGame() {
                   }}
                 >
                   <div className="h-full w-full">
-                    <EmblemBadge hero={card.hero} />
+                    {card.face === 'embleme' ? (
+                      <EmblemBadge hero={card.hero} />
+                    ) : (
+                      <HeroFigure hero={card.hero} />
+                    )}
                   </div>
                 </div>
               </motion.div>

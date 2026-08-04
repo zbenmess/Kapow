@@ -17,6 +17,8 @@ export default {
         givro: '#45A8DC', // bleu glacier — Givro, la glace
         volta: '#F5B531', // jaune miel — Volta, la foudre
         mira: '#8A6BC9', // violet myrtille — Mira, l'invisibilité
+        braise: '#C9404F', // rouge cerise — Braise, le feu
+        onda: '#2FB4A8', // vert lagon — Onda, l'eau
         // Neutres
         creme: '#FFF6E9', // fond unique de toute l'app
         encre: '#35365C', // indigo doux : traits, ombres, texte parent

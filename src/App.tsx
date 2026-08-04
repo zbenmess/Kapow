@@ -11,6 +11,8 @@ import { MemoryGame } from './games/memory/MemoryGame'
 import { FlyAwayGame } from './games/envol/FlyAwayGame'
 import { ShieldsGame } from './games/boucliers/ShieldsGame'
 import { WebTraceGame } from './games/toile/WebTraceGame'
+import { OddOneOutGame } from './games/intrus/OddOneOutGame'
+import { EchoGame } from './games/echo/EchoGame'
 import { ParentPanel } from './parent/ParentPanel'
 import { useStore } from './store/useStore'
 
@@ -61,6 +63,8 @@ export default function App() {
       {screen === 'envol' && <FlyAwayGame />}
       {screen === 'boucliers' && <ShieldsGame />}
       {screen === 'toile' && <WebTraceGame />}
+      {screen === 'intrus' && <OddOneOutGame />}
+      {screen === 'echo' && <EchoGame />}
       {screen !== 'home' && <BackButton />}
       {parentOpen && <ParentPanel />}
       {portrait && <RotateOverlay />}

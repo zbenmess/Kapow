@@ -1,10 +1,15 @@
 /**
- * Chaque héros son bouclier — drag & drop.
+ * Chaque héros son bouclier — drag & drop, 4 niveaux adaptatifs.
  *
- * Trois héros à gauche, trois boucliers assortis à droite (ordre mélangé).
+ *   Niveau 0 : 3 paires, boucliers aux couleurs des héros.
+ *   Niveau 1 : 4 paires colorées (disposition 2×2).
+ *   Niveau 2 : 3 paires, boucliers NEUTRES — même teinte étain partout,
+ *              seul l'emblème permet de trouver le bon.
+ *   Niveau 3 : 4 paires neutres.
+ *
  * Le héros suit le doigt avec une légère inertie (ressort). Aimantation dès
- * que son centre entre dans un rayon de 80 px du bon bouclier (zone ≥ 160 px).
- * Relâché ailleurs : retour fluide à sa place, sans pénalité.
+ * que son centre entre dans un rayon de 80 px du bon bouclier. Relâché
+ * ailleurs : retour fluide à sa place, sans pénalité.
  *
  * Pointer Events exclusivement, avec setPointerCapture pendant le drag.
  */
@@ -18,6 +23,15 @@ import { clamp, useViewportSize } from '../../components/useViewportSize'
 import { DROP_ZONE_MIN, GAP_MIN, MAGNET_RADIUS } from '../../design/tokens'
 import { useSound } from '../../audio/useSound'
 import { useStore } from '../../store/useStore'
+
+const TIERS = [
+  { count: 3, neutral: false },
+  { count: 4, neutral: false },
+  { count: 3, neutral: true },
+  { count: 4, neutral: true },
+]
+
+const ROUNDS = 2
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -33,10 +47,11 @@ interface DraggableProps {
   size: number
   placed: boolean
   onPlaced: (hero: HeroId) => void
+  onMiss: () => void
   getTargetCenter: (hero: HeroId) => { x: number; y: number } | null
 }
 
-function DraggableHero({ hero, size, placed, onPlaced, getTargetCenter }: DraggableProps) {
+function DraggableHero({ hero, size, placed, onPlaced, onMiss, getTargetCenter }: DraggableProps) {
   const x = useMotionValue(0)
   const y = useMotionValue(0)
   // Le ressort crée la légère inertie : le héros « court après » le doigt.
@@ -92,11 +107,15 @@ function DraggableHero({ hero, size, placed, onPlaced, getTargetCenter }: Dragga
     }
   }
 
-  const endDrag = () => {
-    if (!drag.current) return
+  const endDrag = (e: React.PointerEvent) => {
+    const d = drag.current
+    if (!d) return
     drag.current = null
     setDragging(false)
-    // Relâché hors zone : retour fluide à sa place, sans pénalité.
+    // Vrai déplacement relâché hors zone (pas un simple tap) : on le note
+    // pour la difficulté adaptative — sans la moindre pénalité visible.
+    if (Math.hypot(e.clientX - d.startX, e.clientY - d.startY) > 40) onMiss()
+    // Retour fluide à sa place.
     x.set(0)
     y.set(0)
   }
@@ -119,24 +138,22 @@ function DraggableHero({ hero, size, placed, onPlaced, getTargetCenter }: Dragga
 }
 
 export function ShieldsGame() {
-  const [trios] = useState<HeroId[][]>(() => {
-    const all = shuffle(HERO_IDS)
-    return [all.slice(0, 3), all.slice(3, 6)]
-  })
-  const [trioIndex, setTrioIndex] = useState(0)
-  const [shieldOrder, setShieldOrder] = useState<HeroId[]>(() => shuffle(trios[0]))
+  const storeLevel = useStore((s) => s.levels.boucliers)
+  const { setScreen, reportRound } = useStore()
+  const [tier, setTier] = useState(storeLevel)
+  const [roundCount, setRoundCount] = useState(0)
+  const [group, setGroup] = useState<HeroId[]>(() => shuffle(HERO_IDS).slice(0, TIERS[storeLevel].count))
+  const [shieldOrder, setShieldOrder] = useState<HeroId[]>(() => shuffle(group))
   const [placed, setPlaced] = useState<Set<HeroId>>(new Set())
   const [celebrating, setCelebrating] = useState(false)
+  const misses = useRef(0)
   const shieldRefs = useRef(new Map<HeroId, HTMLDivElement>())
-  const { play, voice } = useSound()
-  const { setScreen, bumpProgress } = useStore()
+  const { play, voice, cheer } = useSound()
 
   useEffect(() => {
     voice('boucliers-intro')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  const trio = trios[trioIndex]
 
   const getTargetCenter = (hero: HeroId) => {
     const el = shieldRefs.current.get(hero)
@@ -146,27 +163,27 @@ export function ShieldsGame() {
   }
 
   const onPlaced = (hero: HeroId) => {
-    setPlaced((p) => {
-      const np = new Set(p)
-      np.add(hero)
-      return np
-    })
+    setPlaced((p) => new Set([...p, hero]))
   }
 
   useEffect(() => {
-    if (placed.size === 3 && !celebrating) {
+    if (group.length > 0 && placed.size === group.length && !celebrating) {
       setCelebrating(true)
-      bumpProgress('boucliers')
+      reportRound('boucliers', misses.current >= 3)
       window.setTimeout(() => {
         play('fanfare')
-        voice('bravo')
+        cheer()
       }, 500)
       window.setTimeout(() => {
-        if (trioIndex + 1 < trios.length) {
-          const next = trios[trioIndex + 1]
-          setTrioIndex(trioIndex + 1)
-          setShieldOrder(shuffle(next))
+        if (roundCount + 1 < ROUNDS) {
+          const nextTier = useStore.getState().levels.boucliers
+          const nextGroup = shuffle(HERO_IDS).slice(0, TIERS[nextTier].count)
+          setTier(nextTier)
+          setGroup(nextGroup)
+          setShieldOrder(shuffle(nextGroup))
           setPlaced(new Set())
+          setRoundCount(roundCount + 1)
+          misses.current = 0
           setCelebrating(false)
         } else {
           setScreen('home')
@@ -176,31 +193,36 @@ export function ShieldsGame() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [placed])
 
-  // Tailles adaptées à la hauteur d'écran : les trois rangées doivent
-  // toujours tenir sans être coupées, même en paysage sur téléphone.
+  const { neutral } = TIERS[tier]
+  const twoCols = group.length === 4
+
+  // Tailles adaptées : les rangées (3 en colonne, ou 2×2) tiennent toujours.
   const { h } = useViewportSize()
+  const rows = twoCols ? 2 : 3
   const gap = h < 560 ? GAP_MIN : 32
-  const shieldSize = clamp(Math.floor((h - 40 - 2 * gap) / 3), 96, DROP_ZONE_MIN)
+  const shieldSize = clamp(Math.floor((h - 40 - (rows - 1) * gap) / rows), 96, DROP_ZONE_MIN)
   const heroSize = clamp(Math.floor(shieldSize * 0.82), 90, 140)
+  const gridClass = twoCols ? 'grid grid-cols-2' : 'flex flex-col justify-center'
 
   return (
-    <div className="zone-jeu relative flex h-full w-full items-center justify-between bg-creme px-[8vw]">
+    <div className="zone-jeu relative flex h-full w-full items-center justify-between bg-creme px-[7vw]">
       {/* Héros à gauche */}
-      <div key={`heroes-${trioIndex}`} className="flex flex-col justify-center" style={{ gap }}>
-        {trio.map((hero) => (
+      <div key={`heroes-${roundCount}`} className={`${gridClass} items-center`} style={{ gap }}>
+        {group.map((hero) => (
           <DraggableHero
             key={hero}
             hero={hero}
             size={heroSize}
             placed={placed.has(hero)}
             onPlaced={onPlaced}
+            onMiss={() => (misses.current += 1)}
             getTargetCenter={getTargetCenter}
           />
         ))}
       </div>
 
       {/* Boucliers à droite — zones de dépôt de 160 px (tablette) */}
-      <div key={`shields-${trioIndex}`} className="flex flex-col justify-center" style={{ gap }}>
+      <div key={`shields-${roundCount}`} className={gridClass} style={{ gap }}>
         {shieldOrder.map((hero) => (
           <div
             key={hero}
@@ -210,7 +232,7 @@ export function ShieldsGame() {
             }}
             className={placed.has(hero) ? 'opacity-90' : ''}
           >
-            <Shield hero={hero} size={shieldSize} />
+            <Shield hero={hero} size={shieldSize} neutral={neutral} />
           </div>
         ))}
       </div>

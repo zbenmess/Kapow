@@ -12,10 +12,13 @@ const GAME_LABELS: Record<GameId, string> = {
   envol: "Qui s'est envolé ?",
   boucliers: 'Chaque héros son bouclier',
   toile: 'La toile',
+  intrus: "L'intrus",
+  echo: "L'écho Kapow",
 }
 
 export function ParentPanel() {
-  const { volume, setVolume, enabledGames, toggleGame, resetProgress, setParentOpen } = useStore()
+  const { volume, setVolume, enabledGames, toggleGame, resetProgress, setBaseLevel, setParentOpen } =
+    useStore()
   const { play } = useSound()
   const [confirmReset, setConfirmReset] = useState(false)
 
@@ -61,6 +64,28 @@ export function ParentPanel() {
                   />
                 </button>
               </label>
+            ))}
+          </div>
+        </section>
+
+        <section className="mb-6">
+          <h3 className="mb-1 text-xl font-bold">Niveau de départ</h3>
+          <p className="mb-2 text-sm opacity-70">
+            La difficulté s'ajuste ensuite toute seule, en douceur, selon les réussites.
+          </p>
+          <div className="flex gap-3">
+            {[
+              { label: 'Doux (3 ans)', base: 0 },
+              { label: 'Moyen (3 ans ½)', base: 1 },
+              { label: 'Costaud (4 ans)', base: 2 },
+            ].map(({ label, base }) => (
+              <button
+                key={base}
+                className="tappable rounded-3xl bg-creme px-5 py-2 text-lg font-bold shadow-pose active:scale-95"
+                onPointerDown={() => setBaseLevel(base)}
+              >
+                {label}
+              </button>
             ))}
           </div>
         </section>
